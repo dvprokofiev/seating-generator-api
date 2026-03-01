@@ -43,12 +43,16 @@ func (s *authService) Login(ctx context.Context, email, password string) (string
 	if _, err := mail.ParseAddress(email); err != nil {
 		return "", ErrInvalidEmail
 	}
+
 	user, err := s.repo.GetByEmail(ctx, strings.ToLower(email))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", ErrInvalidCredentials
 		}
-		return "", ErrInternal
+		return "", err
+	}
+	if user == nil {
+		return "", ErrInvalidCredentials
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
