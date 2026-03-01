@@ -16,9 +16,9 @@ func TestAuthService_Login_UUID(t *testing.T) {
 	mockRepo := new(repository.MockUserRepository)
 	svc := NewAuthService(mockRepo, "secret")
 
-	t.Run("success_login_with_uuid", func(t *testing.T) {
+	t.Run("successful_login", func(t *testing.T) {
 		email := "test@test.ru"
-		pass := "secure-pass"
+		pass := "password"
 		userID := uuid.New()
 
 		hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
@@ -79,6 +79,20 @@ func TestAuthService_Login_UUID(t *testing.T) {
 		assert.Error(t, err)
 		assert.Empty(t, token)
 		assert.ErrorIs(t, err, ErrPasswordTooShort)
+		localMock.AssertNotCalled(t, "GetByEmail", mock.Anything, mock.Anything)
+	})
+	t.Run("incorrect_email", func(t *testing.T) {
+		localMock := new(repository.MockUserRepository)
+		localSvc := NewAuthService(localMock, "secret")
+
+		email := "not_an_email"
+		shortPass := "12345678"
+
+		token, err := localSvc.Login(context.Background(), email, shortPass)
+
+		assert.Error(t, err)
+		assert.Empty(t, token)
+		assert.ErrorIs(t, err, ErrInvalidEmail)
 		localMock.AssertNotCalled(t, "GetByEmail", mock.Anything, mock.Anything)
 	})
 }
