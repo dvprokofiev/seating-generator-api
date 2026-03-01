@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/mail"
 	"time"
 
 	"github.com/dvprokofiev/seating-generator-api/internal/repository"
@@ -15,6 +16,7 @@ var (
 	ErrInvalidCredentials = errors.New("Invalid credentials")
 	ErrInternal           = errors.New("Internal server error")
 	ErrPasswordTooShort   = errors.New("Password is less then 8 symbols length")
+	ErrInvalidEmail       = errors.New("Invalid email")
 )
 
 type AuthService interface {
@@ -36,6 +38,9 @@ func NewAuthService(repo repository.UserRepository, secret string) AuthService {
 func (s *authService) Login(ctx context.Context, email, password string) (string, error) {
 	if len(password) < 8 {
 		return "", ErrPasswordTooShort
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return "", ErrInvalidEmail
 	}
 	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
