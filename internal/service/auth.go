@@ -14,6 +14,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("Invalid credentials")
 	ErrInternal           = errors.New("Internal server error")
+	ErrPasswordTooShort   = errors.New("Password is less then 8 symbols length")
 )
 
 type AuthService interface {
@@ -33,6 +34,9 @@ func NewAuthService(repo repository.UserRepository, secret string) AuthService {
 }
 
 func (s *authService) Login(ctx context.Context, email, password string) (string, error) {
+	if len(password) < 8 {
+		return "", ErrPasswordTooShort
+	}
 	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
