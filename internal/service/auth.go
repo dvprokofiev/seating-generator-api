@@ -12,10 +12,12 @@ var (
 	ErrInternal           = errors.New("Internal server error")
 	ErrPasswordTooShort   = errors.New("Password is less then 8 symbols length")
 	ErrInvalidEmail       = errors.New("Invalid email")
+	ErrUserAlreadyExists  = errors.New("User with such email address already exists")
 )
 
 type AuthService interface {
 	Login(ctx context.Context, email, password string) (string, error)
+	Register(ctx context.Context, email, password string) error
 }
 
 type authService struct {
