@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dvprokofiev/seating-generator-api/internal/models"
+	"github.com/google/uuid"
 )
 
 var ErrDuplicateEmail = errors.New("Email address is already in use")
@@ -38,4 +39,23 @@ func (r *UserPostgres) GetByEmail(ctx context.Context, email string) (*models.Us
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *UserPostgres) UpdateVerified(ctx context.Context, userID uuid.UUID, isVerified bool) error {
+	query := `UPDATE users SET is_verified = $1 WHERE id = $2`
+
+	res, err := r.db.ExecContext(ctx, query, isVerified, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("User not found")
+	}
+
+	return nil
 }

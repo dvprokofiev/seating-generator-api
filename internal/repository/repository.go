@@ -12,6 +12,7 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user *models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	UpdateVerified(ctx context.Context, userID uuid.UUID, isVerified bool) error
 }
 
 type Repository struct {
