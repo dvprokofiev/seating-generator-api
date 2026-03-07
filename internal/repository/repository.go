@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/dvprokofiev/seating-generator-api/internal/models"
+	"github.com/google/uuid"
 )
 
 //go:generate mockery --name=UserRepository --inpackage --case=snake
