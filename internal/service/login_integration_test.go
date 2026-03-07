@@ -11,14 +11,12 @@ import (
 
 	"github.com/dvprokofiev/seating-generator-api/internal/database"
 	"github.com/dvprokofiev/seating-generator-api/internal/repository"
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -77,9 +75,7 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		email := "real-user@test.com"
 		password := "password123"
 
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		_, err := testDB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)",
-			uuid.New(), email, string(hash))
+		testSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
 		token, err := testSvc.Login(ctx, email, password)
@@ -93,9 +89,7 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		email := "wa@test.com"
 		password := "correct-password"
 
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		_, err := testDB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)",
-			uuid.New(), email, string(hash))
+		testSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
 		token, err := testSvc.Login(ctx, email, "incorrect-password")
@@ -126,10 +120,8 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		ctx := context.Background()
 		email := "User@Example.com"
 		pass := "pass1234"
-		hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 
-		_, err := testDB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)",
-			uuid.New(), "user@example.com", string(hash))
+		testSvc.Register(ctx, email, pass)
 		require.NoError(t, err)
 
 		token, err := testSvc.Login(ctx, email, pass)
