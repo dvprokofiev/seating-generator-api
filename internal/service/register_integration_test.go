@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthService_Register_Integration(t *testing.T) {
+func TestRegistrationService_Register_Integration(t *testing.T) {
 	_, err := testDB.Exec("TRUNCATE users CASCADE")
 	require.NoError(t, err)
 
@@ -18,7 +18,7 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "newuser@test.com"
 		password := "password123"
 
-		err := testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 
 		assert.NoError(t, err)
 	})
@@ -28,10 +28,10 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "duplicate@test.com"
 		password := "password123"
 
-		err := testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
-		err = testSvc.Register(ctx, email, password)
+		err = testRegSvc.Register(ctx, email, password)
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrUserAlreadyExists)
@@ -42,7 +42,7 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "not-an-email"
 		password := "password123"
 
-		err := testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrInvalidEmail)
@@ -53,7 +53,7 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "shortpass@test.com"
 		shortPass := "1234567"
 
-		err := testSvc.Register(ctx, email, shortPass)
+		err := testRegSvc.Register(ctx, email, shortPass)
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrPasswordTooShort)
@@ -64,7 +64,7 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		maliciousEmail := "'; DROP TABLE users; --"
 		password := "password123"
 
-		err := testSvc.Register(ctx, maliciousEmail, password)
+		err := testRegSvc.Register(ctx, maliciousEmail, password)
 
 		assert.Error(t, err)
 	})
@@ -74,7 +74,7 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "UPPERCASE@TEST.COM"
 		password := "password123"
 
-		err := testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 
 		assert.NoError(t, err)
 
@@ -89,10 +89,10 @@ func TestAuthService_Register_Integration(t *testing.T) {
 		email := "loginafter@test.com"
 		password := "password123"
 
-		err := testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
-		token, err := testSvc.Login(ctx, email, password)
+		token, err := testAuthSvc.Login(ctx, email, password)
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, token)

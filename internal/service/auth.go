@@ -7,6 +7,8 @@ import (
 	"github.com/dvprokofiev/seating-generator-api/internal/repository"
 )
 
+//go:generate mockery --name=AuthService --inpackage --case=snake
+
 var (
 	ErrInvalidCredentials = errors.New("Invalid credentials")
 	ErrInternal           = errors.New("Internal server error")
@@ -17,17 +19,17 @@ var (
 
 type AuthService interface {
 	Login(ctx context.Context, email, password string) (string, error)
-	Register(ctx context.Context, email, password string) error
 }
 
 type authService struct {
-	repo      repository.UserRepository
+	repo      repository.User
 	jwtSecret []byte
 }
 
-func NewAuthService(repo repository.UserRepository, secret string) AuthService {
+func NewAuthService(repo repository.User, secret string) AuthService {
 	return &authService{
 		repo:      repo,
 		jwtSecret: []byte(secret),
 	}
+
 }

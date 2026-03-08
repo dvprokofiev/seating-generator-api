@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/mail"
 	"strings"
 	"time"
@@ -14,7 +15,25 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *authService) Register(ctx context.Context, email, password string) error {
+//go:generate mockery --name=RegistrationService --inpackage --case=snake
+
+type RegistrationService interface {
+	Register(ctx context.Context, email, password string) error
+}
+
+type registrationService struct {
+	userRepo     repository.User
+	emailService EmailVerifier
+}
+
+func NewRegistrationService(uRepo repository.User, eSvc EmailVerifier) RegistrationService {
+	return &registrationService{
+		userRepo:     uRepo,
+		emailService: eSvc,
+	}
+}
+
+func (s *registrationService) Register(ctx context.Context, email, password string) error {
 	if _, err := mail.ParseAddress(email); err != nil {
 		return ErrInvalidEmail
 	}
@@ -34,12 +53,17 @@ func (s *authService) Register(ctx context.Context, email, password string) erro
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	err = s.repo.Create(ctx, user)
+	err = s.userRepo.Create(ctx, user)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicateEmail) {
 			return ErrUserAlreadyExists
 		}
 		return err
+	}
+
+	err = s.emailService.SendVerification(ctx, user.ID, user.Email)
+	if err != nil {
+		log.Printf("Failed to send verification email: %v", err)
 	}
 	return nil
 }

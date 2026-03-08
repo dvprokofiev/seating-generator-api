@@ -6,13 +6,17 @@ import (
 )
 
 type AuthHandler struct {
-	authService service.AuthService
-	validator   *validator.Validate
+	authService          service.AuthService
+	registrationService  service.RegistrationService
+	emailVerifierService service.EmailVerifier
+	validator            *validator.Validate
 }
 
-func NewAuthHandler(s service.AuthService) *AuthHandler {
+func NewAuthHandler(s service.AuthService, r service.RegistrationService, e service.EmailVerifier) *AuthHandler {
 	return &AuthHandler{
-		authService: s,
-		validator:   validator.New(),
+		authService:          s,
+		registrationService:  r,
+		emailVerifierService: e,
+		validator:            validator.New(),
 	}
 }

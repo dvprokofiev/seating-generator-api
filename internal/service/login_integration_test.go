@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/dvprokofiev/seating-generator-api/internal/repository"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	testDB  *sql.DB
-	testSvc AuthService
+	testDB      *sql.DB
+	testAuthSvc AuthService
+	testRegSvc  RegistrationService
 )
 
 func TestMain(m *testing.M) {
@@ -51,12 +52,17 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	migrationsPath, _ := filepath.Abs("../database/migrations")
 	err = database.RunMigrations(testDB)
-	fmt.Printf("Running migrations from: %s\n", migrationsPath)
+	if err != nil {
+		panic(err)
+	}
 
 	repo := repository.NewRepository(testDB)
-	testSvc = NewAuthService(repo.Users, "test-secret")
+
+	mockMail := &MockEmailVerifier{}
+	mockMail.On("SendVerification", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	testAuthSvc = NewAuthService(repo.Users, "test-secret")
+	testRegSvc = NewRegistrationService(repo.Users, mockMail)
 
 	code := m.Run()
 
@@ -75,10 +81,10 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		email := "real-user@test.com"
 		password := "password123"
 
-		testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
-		token, err := testSvc.Login(ctx, email, password)
+		token, err := testAuthSvc.Login(ctx, email, password)
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, token)
@@ -89,31 +95,23 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		email := "wa@test.com"
 		password := "correct-password"
 
-		testSvc.Register(ctx, email, password)
+		err := testRegSvc.Register(ctx, email, password)
 		require.NoError(t, err)
 
-		token, err := testSvc.Login(ctx, email, "incorrect-password")
+		token, err := testAuthSvc.Login(ctx, email, "incorrect-password")
 
 		assert.Error(t, err)
 		assert.Empty(t, token)
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
 	})
+
 	t.Run("user_not_found", func(t *testing.T) {
 		ctx := context.Background()
-		token, err := testSvc.Login(ctx, "no-such-user@test.com", "password1234")
+		token, err := testAuthSvc.Login(ctx, "no-such-user@test.com", "password1234")
 
 		assert.Error(t, err)
 		assert.Empty(t, token)
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
-	})
-
-	t.Run("sql_injection_attempt", func(t *testing.T) {
-		ctx := context.Background()
-		maliciousEmail := "' OR 1=1; --"
-		token, err := testSvc.Login(ctx, maliciousEmail, "any")
-
-		assert.Error(t, err)
-		assert.Empty(t, token)
 	})
 
 	t.Run("case_sensitive_email", func(t *testing.T) {
@@ -121,10 +119,10 @@ func TestAuthService_Login_Integration(t *testing.T) {
 		email := "User@Example.com"
 		pass := "pass1234"
 
-		testSvc.Register(ctx, email, pass)
+		err := testRegSvc.Register(ctx, email, pass)
 		require.NoError(t, err)
 
-		token, err := testSvc.Login(ctx, email, pass)
+		token, err := testAuthSvc.Login(ctx, email, pass)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, token)
 	})

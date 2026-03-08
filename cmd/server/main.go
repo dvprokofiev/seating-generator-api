@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/dvprokofiev/seating-generator-api/internal/database"
 	"github.com/dvprokofiev/seating-generator-api/internal/handler"
+	"github.com/dvprokofiev/seating-generator-api/internal/mailer"
 	"github.com/dvprokofiev/seating-generator-api/internal/repository"
 	"github.com/dvprokofiev/seating-generator-api/internal/service"
 )
@@ -34,8 +36,28 @@ func main() {
 	defer db.Close()
 
 	repos := repository.NewRepository(db)
+
+	smtpMailer := mailer.NewSMTPMailer(
+		os.Getenv("SMTP_HOST"),
+		os.Getenv("SMTP_PORT"),
+		os.Getenv("SMTP_USER"),
+		os.Getenv("SMTP_PASS"),
+		os.Getenv("SMTP_FROM"),
+		os.Getenv("BASE_URL"),
+	)
+
+	emailVerifyService := service.NewEmailVerification(
+		repos.EmailVerification,
+		repos.Users,
+		smtpMailer,
+		service.EmailVerificationConfig{
+			TTL: 24 * time.Hour,
+		},
+	)
+
 	authService := service.NewAuthService(repos.Users, os.Getenv("JWT_SECRET"))
-	authHandler := handler.NewAuthHandler(authService)
+	registrationService := service.NewRegistrationService(repos.Users, emailVerifyService)
+	authHandler := handler.NewAuthHandler(authService, registrationService, emailVerifyService)
 
 	r := chi.NewRouter()
 
@@ -46,6 +68,7 @@ func main() {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", authHandler.Login)
 			r.Post("/register", authHandler.Register)
+			r.Get("/verify", authHandler.VerifyEmail)
 		})
 	})
 

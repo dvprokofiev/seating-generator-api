@@ -20,8 +20,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
+	if err := h.validator.Struct(req); err != nil {
+		sendError(w, http.StatusBadRequest, "Validation failed: "+err.Error())
+		return
+	}
 
-	err := h.authService.Register(r.Context(), req.Email, req.Password)
+	err := h.registrationService.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidEmail), errors.Is(err, service.ErrPasswordTooShort):
