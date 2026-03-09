@@ -45,7 +45,9 @@ func (m *SMTPMailer) SendVerificationEmail(to string, token uuid.UUID) error {
 
 	msg := []byte(subject + mime + body)
 	addr := fmt.Sprintf("%s:%s", m.host, m.port)
-	auth := smtp.PlainAuth("", m.username, m.password, m.host)
-
+	var auth smtp.Auth
+    if m.username != "" && m.password != "" {
+        auth = smtp.PlainAuth("", m.username, m.password, m.host)
+    }
 	return smtp.SendMail(addr, auth, m.from, []string{to}, msg)
 }
