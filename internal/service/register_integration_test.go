@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ func TestRegistrationService_Register_Integration(t *testing.T) {
 	_, err := testDB.Exec("TRUNCATE users CASCADE")
 	require.NoError(t, err)
 
-	t.Run("success_registration_db", func(t *testing.T) {
+	t.Run("success_registration", func(t *testing.T) {
 		ctx := context.Background()
 		email := "newuser@test.com"
 		password := "password123"
@@ -21,6 +22,26 @@ func TestRegistrationService_Register_Integration(t *testing.T) {
 		err := testRegSvc.Register(ctx, email, password)
 
 		assert.NoError(t, err)
+	})
+
+	t.Run("register_and_verify_email", func(t *testing.T) {
+		ctx := context.Background()
+		email := "verify-me@example.com"
+
+		err := testRegSvc.Register(ctx, email, "strong-pass-123")
+		assert.NoError(t, err)
+
+		tokenStr := fetchTokenFromMailpit(t, testMailpitAPI)
+		parsedUUID, err := uuid.Parse(tokenStr)
+		require.NoError(t, err, "Need valid UUID")
+
+		err = verifySvc.Verify(ctx, parsedUUID)
+		assert.NoError(t, err)
+
+		var isVerified bool
+		err = testDB.QueryRow("SELECT is_verified FROM users WHERE email = $1", email).Scan(&isVerified)
+		assert.NoError(t, err)
+		assert.True(t, isVerified)
 	})
 
 	t.Run("duplicate_email", func(t *testing.T) {

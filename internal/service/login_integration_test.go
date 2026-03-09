@@ -3,20 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
-	"github.com/dvprokofiev/seating-generator-api/internal/database"
-	"github.com/dvprokofiev/seating-generator-api/internal/repository"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 var (
@@ -24,53 +15,6 @@ var (
 	testAuthSvc AuthService
 	testRegSvc  RegistrationService
 )
-
-func TestMain(m *testing.M) {
-	ctx := context.Background()
-
-	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("user"),
-		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
-	)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to start container: %s", err))
-	}
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-
-	testDB, err = sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
-
-	err = database.RunMigrations(testDB)
-	if err != nil {
-		panic(err)
-	}
-
-	repo := repository.NewRepository(testDB)
-
-	mockMail := &MockEmailVerifier{}
-	mockMail.On("SendVerification", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	testAuthSvc = NewAuthService(repo.Users, "test-secret")
-	testRegSvc = NewRegistrationService(repo.Users, mockMail)
-
-	code := m.Run()
-
-	testDB.Close()
-	pgContainer.Terminate(ctx)
-
-	os.Exit(code)
-}
 
 func TestAuthService_Login_Integration(t *testing.T) {
 	_, err := testDB.Exec("TRUNCATE users CASCADE")
